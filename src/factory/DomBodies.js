@@ -33,27 +33,21 @@ module.exports = function(Matter){
         var worldBody = null
         var domBody = document.querySelector(el);
 
-        var positionInWorld = render.mapping.viewToWorld({x: position.x, y: position.y});        
         if(bodyType == "block"){
-            var blockDimensionsInWorld = render.mapping.viewToWorld({
-                x: domBody.offsetWidth,
-                y: domBody.offsetHeight  
-            });
             //console.log("One block, please!")
             worldBody = DomBodies.OGblock(
-                positionInWorld.x,
-                positionInWorld.y,
-                blockDimensionsInWorld.x,
-                blockDimensionsInWorld.y,
+                position.x,
+                position.y,
+                domBody.offsetWidth,
+                domBody.offsetHeight,
                 options
             );
         }else if(bodyType == "circle"){
-            var circleRadiusInWorld = render.mapping.viewToWorld(domBody.offsetWidth/2);
             //console.log("One circle, please!");
             worldBody = DomBodies.circle(
-                positionInWorld.x,
-                positionInWorld.y,
-                circleRadiusInWorld,
+                position.x,
+                position.y,
+                domBody.offsetWidth/2,
                 options
             );
         }
@@ -85,47 +79,81 @@ module.exports = function(Matter){
         return DomBody.create(Common.extend({}, block, options));
     };
 
-    DomBodies.block = function(x, y, options){
+    DomBodies.element = function(element, options){
+        var bbox = element.getBoundingClientRect();
+        var position = {x: bbox.x + bbox.width / 2.0, y: bbox.y + bbox.height / 2.0};
+
         var defaults = {
-            Dom: {
-                element: null,
-                render: null
+            Dom:{element:element}
+        }
+
+
+    // let bodyopts = {restitution: 0.3,
+    //     friction: 1, frictionAir:0, frictionStatic: 2,
+    //     density: 0.1,
+    //     isStatic: false}
+        var attributes = ['restitution', 'friction', 'frictionAir', 'frictionStatic', 'density', 'isStatic'];
+        for(var attr of attributes) {
+            var v;
+            if(v = element.getAttribute(`data-${attr}`)) {
+                defaults[attr] = v
             }
         }
+
         var options = options || {};
         options = Common.extend(defaults, options);
         
+        if(element.tagName == 'circle' || element.tagName == 'ellipse' )
+            return DomBodies.circle(position.x, position.y, bbox.width / 2.0, options);
 
-        var render = options.Dom.render;
-        var element = options.Dom.element;
-        var positionInWorld = render.mapping.viewToWorld({
-            x: x,
-            y: y
-        });
-
-        var elementDimensionsInWorld = render.mapping.viewToWorld({
-            x: element.offsetWidth,
-            y: element.offsetHeight
-        });
-        
         var block = {
-            label: 'DOM Block Body',
-            position: {x: positionInWorld.x, y: positionInWorld.y},
-            vertices: Vertices.fromPath('L 0 0 L ' + elementDimensionsInWorld.x + ' 0 L ' + elementDimensionsInWorld.x + ' ' + elementDimensionsInWorld.y + ' L 0 ' + elementDimensionsInWorld.y)
+            label: `DOM ${element.tagName} Body`,
+            position: position,
+            vertices: Vertices.fromPath('L 0 0 L ' + bbox.width + ' 0 L ' + bbox.width + ' ' + bbox.height + ' L 0 ' + bbox.height)
         };
 
+        
         if(options.chamfer){
-            var chamfer = options.chamfer;
+            var chamfer = option.chamfer;
             block.vertices = Vertices.chamfer(block.vertices, chamfer.radius,
                                 chamfer.quality, chamfer.qualityMin, chamfer.qualityMax);
             delete options.chamfer;
         }
         
         var body = DomBody.create(Common.extend({}, block, options));
-         //element.setAttribute('matter-id', body.id);
+         element.setAttribute('matter-id', body.id);
 
          return body;
     };
+
+    // DomBodies.block = function(x, y, options){
+    //     var defaults = {
+    //         Dom: {
+    //             element: null,
+    //             render: null
+    //         }
+    //     }
+    //     var options = options || {};
+    //     options = Common.extend(defaults, options);
+
+    //     var block = {
+    //         label: 'DOM Block Body',
+    //         position: {x: x, y: y},
+    //         vertices: Vertices.fromPath('L 0 0 L ' + bbox.width + ' 0 L ' + bbox.width + ' ' + bbox.height + ' L 0 ' + bbox.height)
+    //     };
+
+    //     if(options.chamfer){
+    //         var chamfer = option.chamfer;
+    //         block.vertices = Vertices.chamfer(block.vertices, chamfer.radius,
+    //                             chamfer.quality, chamfer.qualityMin, chamfer.qualityMax);
+    //         delete options.chamfer;
+    //     }
+        
+    //     var body = DomBody.create(Common.extend({}, block, options));
+    //      //element.setAttribute('matter-id', body.id);
+
+    //      return body;
+    // };
 
     DomBodies.circle = function(x, y, radius, options, maxSides){
         options = options || {};

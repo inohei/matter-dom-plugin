@@ -75,15 +75,13 @@ module.exports = function(Matter){
                 for(var i=0; i<bodies.length; i++){
                     body = bodies[i];
 
-                    mousePositionInWorld = body.Dom.render.mapping.viewToWorld(mouse.position);
-                    var bodyPositionInView = body.Dom.render.mapping.worldToView(body.position);
-                    if(Bounds.contains(body.bounds, mousePositionInWorld)){
-                        constraint.pointA =  mousePositionInWorld;
+                    if(Bounds.contains(body.bounds, mouse.position)){
+                        constraint.pointA =  mouse.position;
                         constraint.bodyB = mouseConstraint.body = body;
                         //constraint.pointB = {x: mousePositionInWorld.x - body.position.x, y: mousePositionInWorld.y - body.position.y};
                         constraint.pointB = {x: 0, y: 0};
                         constraint.angleB = body.angle;
-                        
+
                         Events.trigger(mouseConstraint, 'startdrag', { mouse: mouse, body: body });
 
                         break;
@@ -92,8 +90,7 @@ module.exports = function(Matter){
             }else{
 
                 Sleeping.set(constraint.bodyB, false);
-                mousePositionInWorld = body.Dom.render.mapping.viewToWorld(mouse.position);
-                constraint.pointA = mousePositionInWorld;
+                constraint.pointA = mouse.position;
             }
         }else{
             constraint.bodyB = mouseConstraint.body = null;
@@ -109,13 +106,13 @@ module.exports = function(Matter){
             mouseEvents = mouse.sourceEvents;
 
         if (mouseEvents.mousemove)
-            Events.trigger(mouseConstraint, 'mousemove', { mouse: mouse });
+            Events.trigger(mouseConstraint, 'pointermove', { mouse: mouse });
 
         if (mouseEvents.mousedown)
-            Events.trigger(mouseConstraint, 'mousedown', { mouse: mouse });
+            Events.trigger(mouseConstraint, 'pointerdown', { mouse: mouse });
 
         if (mouseEvents.mouseup)
-            Events.trigger(mouseConstraint, 'mouseup', { mouse: mouse });
+            Events.trigger(mouseConstraint, 'pointerup', { mouse: mouse });
 
         // reset the mouse state ready for the next step
         Mouse.clearSourceEvents(mouse);

@@ -24,9 +24,7 @@ module.exports = function(Matter){
             element: window,
             controller: RenderDom,
             frameRequestId: null,
-            options: {
-
-            }
+            options: {}
         }
 
         /*
@@ -46,77 +44,8 @@ module.exports = function(Matter){
         var engine = options.engine;
 
         var render = Common.extend(defaults, options);
+        
 
-        render.mapping = {};
-        render.mapping.ratioMultiplier = 1/6; // VIEW is base ratio. Mapping to World.
-        render.mapping.VIEW = {
-            width: window.innerWidth,
-            height: window.innerHeight
-        };
-        render.mapping.VIEW.center = {
-            x: render.mapping.VIEW.width/2,
-            y: render.mapping.VIEW.height/2
-        };
-        render.mapping.WORLD = {
-            width: render.mapping.VIEW.width * render.mapping.ratioMultiplier,
-            height: render.mapping.VIEW.height * render.mapping.ratioMultiplier,
-        };
-        render.mapping.WORLD.center = {
-            x: render.mapping.WORLD.width/2,
-            y: render.mapping.WORLD.height/2
-        };
-        render.mapping.viewToWorld = function(value){
-            if( typeof value === 'object' &&  value !== null ){
-                return {
-                    x: render.mapping.ratioMultiplier * value.x,
-                    y: render.mapping.ratioMultiplier * value.y
-                };
-            }else{
-                return render.mapping.ratioMultiplier * value;
-            }
-        };
-        render.mapping.worldToView = function(value){
-            if( typeof value === 'object' &&  value !== null ){
-                return {
-                    x: value.x/render.mapping.ratioMultiplier,
-                    y: value.y/render.mapping.ratioMultiplier
-                };
-            }else{
-                return value/render.mapping.ratioMultiplier;
-            }
-        };
-
-
-        var debugElement = document.querySelector('#debug');
-        debugElement.style.position = "absolute";
-        var debugRender = Render.create({
-            element: document.querySelector('#debug'),
-            engine: engine,
-            options: {
-                    width: render.mapping.WORLD.width,
-                    height: render.mapping.WORLD.height,
-                    background: '#fafafa',
-                    wireframeBackground: '#222',
-                    hasBounds: false,
-                    enabled: true,
-                    wireframes: true,
-                    showSleeping: true,
-                    showDebug: false,
-                    showBroadphase: false,
-                    showBounds: false,
-                    showVelocity: false,
-                    showCollisions: false,
-                    showAxes: false,
-                    showPositions: false,
-                    showAngleIndicator: false,
-                    showIds: false,
-                    showShadows: false
-            }
-        });
-
-        Render.run(debugRender);
-
-        render.DebugRender = debugRender;
 
         return render;
     }
@@ -166,15 +95,29 @@ module.exports = function(Matter){
             
             for(var k=(matterBody.parts.length > 1) ? 1 : 0; k<matterBody.parts.length; k++){
                 var matterPart = matterBody.parts[k];
+                if(!matterPart.Dom) continue;
                 var domPart = matterPart.Dom.element;
 
-                
-                var bodyWorldPoint = render.mapping.worldToView({x: matterPart.position.x, y: matterPart.position.y});
-                var bodyViewOffset = {x: domPart.offsetWidth/2, y: domPart.offsetHeight/2};
+                var bodyWorldPoint = matterPart.position;
+                var bodyViewOffset;
+                var center;
+                if(domPart instanceof SVGElement) {
+                    const parent = domPart.parentElement;
+                    const vbox = parent.getAttribute("viewBox")?.split(/ +/) || [0,0]
+                    var bbox = domPart.getBBox();
+                    var svgbbox = parent.getBoundingClientRect();
+                    center = {x: bbox.x + bbox.width/2, y: bbox.y + bbox.height/2};
+                    bodyViewOffset = {x: center.x - vbox[0] + svgbbox.x, y: center.y - vbox[1] + svgbbox.y};
+                } else {
+                    bodyViewOffset = {x: domPart.offsetLeft + domPart.offsetWidth/2, y: domPart.offsetTop + domPart.offsetHeight/2};
+                }
                 domPart.style.position = "absolute";
-                domPart.style.transform = `translate(${bodyWorldPoint.x-bodyViewOffset.x}px, ${bodyWorldPoint.y-bodyViewOffset.y}px)`;
-                domPart.style.transform += `rotate(${matterBody.angle}rad)`;
-                
+                var t = `translate(${bodyWorldPoint.x-bodyViewOffset.x}px, ${bodyWorldPoint.y-bodyViewOffset.y}px)`;
+                if(domPart instanceof SVGElement) t += `translate(${center.x}px, ${center.y}px)`;
+                t += `rotate(${matterBody.angle}rad)`;
+                if(domPart instanceof SVGElement) t += `translate(${-center.x}px, ${-center.y}px)`;
+
+                domPart.style.transform = t;
             }
         }
     }
